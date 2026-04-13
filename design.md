@@ -22,7 +22,7 @@ For day-to-day module maps, see folder **README.md** files under `server/src` an
 | Deployment | Single Node process + static SPA (or Vite dev proxy) |
 | State | **No database**; uploads held in memory for the request only |
 | Scoring | **OpenAI** chat completions (text or multimodal vision per resume) |
-| Concurrency | **`Promise.all`** over resumes for parse and score phases |
+| Concurrency | **Bounded worker pools** over resumes for parse and score (`PARSE_CONCURRENCY`, `SCORE_CONCURRENCY`; default 8 / 5) |
 
 ### 1.2 Component diagram
 
@@ -79,11 +79,11 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
 1. **Client** builds `FormData`: repeatable `resumes`, optional `jobDescription` file, optional `jobDescriptionText`, optional HR experience fields.
 2. **HTTP** `POST /api/v1/rank` hits Express; **Multer** parses multipart fields into memory buffers (`rankRoutes.js`).
 3. **Job description** is resolved to plain text (parse PDF/DOCX/TXT; **reject** image-only JD with `400` / `JD_IMAGE_NOT_SUPPORTED`).
-4. For each resume, **parse** runs in parallel (`parseService.js`):
+4. For each resume, **parse** runs with bounded concurrency (`parseService.js` via `mapWithConcurrency`):
    - PDF → text via `pdf-parse`; if text is very short, **rasterize page 1** to PNG for vision.
    - DOCX → `mammoth`; TXT → UTF-8.
    - JPEG/PNG/WebP → no text extraction; mark for **vision** scoring.
-5. **Score** runs in parallel per parsed row (`scoreService.js`): one OpenAI call each (text JSON user message, or multimodal with `image_url` data URL).
+5. **Score** runs with bounded concurrency per parsed row (`scoreService.js`): one OpenAI call each (text JSON user message, or multimodal with `image_url` data URL).
 6. **Dedupe** merges rows with the same normalized email or phone (`dedupeService.js`).
 7. **Rank** sorts by `matchScore`, applies optional strict years-of-experience filter, assigns `rank` (`rankService.js`).
 8. **Response** JSON: `version`, `jobDescription` meta, `candidates[]`, `meta` (counts, timing, temperature, band, flags).
@@ -95,7 +95,7 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
 ### 2.3 Request sequence (text diagram)
 
 ```
-  Browser                Express /rank              Parse (parallel)     OpenAI          Dedupe + Rank
+  Browser                Express /rank              Parse (batched)      OpenAI          Dedupe + Rank
       |                        |                          |                |                  |
       |  POST multipart          |                          |                |                  |
       |------------------------>|                          |                |                  |
@@ -122,7 +122,7 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
       |                        |                          |                |                  |
 
 Notes:
-- Rows marked "(x N)" run in parallel for each resume (Promise.all), not strictly one-after-another.
+- Rows marked "(x N)" mean every resume is processed, but parse and score use **bounded concurrency** (not unbounded `Promise.all`).
 - Dedupe + Rank run once after all scores return.
 ```
 
@@ -133,8 +133,8 @@ Notes:
 Ordered stages (do not reorder without updating `pipelineService.js`):
 
 1. **Ingest** — Multer stores uploads in memory; files normalized via `ingestService`.
-2. **Parse** — PDF (`pdf-parse`), DOCX (`mammoth`), TXT; JPEG/PNG/WebP as vision inputs; MIME from `utils/mime.js`. Low-text PDFs → first-page PNG (`utils/pdfRasterize.js`).
-3. **Score** — One OpenAI completion per resume: text-only or multimodal; temperature from HR band (`utils/temperatureMap.js`).
+2. **Parse** — PDF (`pdf-parse`), DOCX (`mammoth`), TXT; JPEG/PNG/WebP as vision inputs; MIME from `utils/mime.js`. Low-text PDFs → first-page PNG (`utils/pdfRasterize.js`). Runs in a pool sized by `PARSE_CONCURRENCY`.
+3. **Score** — One OpenAI completion per resume: text-only or multimodal; temperature from HR band (`utils/temperatureMap.js`). Pool sized by `SCORE_CONCURRENCY`.
 4. **Dedupe** — Same normalized email or phone (`dedupeService` + `utils/contactNormalize.js`).
 5. **Rank** — Sort, optional YoE filter, assign `rank` (`rankService.js`).
 
@@ -147,7 +147,7 @@ Ordered stages (do not reorder without updating `pipelineService.js`):
 - **`POST /api/v1/rank`** — `resumes` (repeatable), optional `jobDescription`, `jobDescriptionText`, `experienceMin`, `experienceMax`, `strictExperienceFilter`.
 - **Résumé types**: PDF, DOCX, TXT, JPEG, PNG, WebP (vision where needed). **JD** must not be image-only (`400` / `JD_IMAGE_NOT_SUPPORTED`).
 - **`GET /health`** — Liveness.
-- **Limits**: `server/src/config/limits.js` (max resumes, Multer file count/size).
+- **Limits**: `server/src/config/limits.js` (max resumes per request, Multer file count/size, optional `PARSE_CONCURRENCY` / `SCORE_CONCURRENCY` for bounded batching).
 
 ---
 
@@ -262,7 +262,7 @@ Flow summary:
 | **Unsupported MIME** | `400` `UNSUPPORTED_TYPE` | Request rejected for that upload path | Client `accept` aligned with server; Prod: explicit allowlist. |
 | **Image-only job description** | `400` `JD_IMAGE_NOT_SUPPORTED` | JD rejected | User must paste text or use text-based JD file. |
 | **Multer limits** (size / count) | `413` / Multer error | Upload rejected | Raise limits carefully; Prod: presigned uploads to S3 with size caps. |
-| **Memory pressure** | Large batch + buffers in RAM | OOM or slow GC | PoC: cap `MAX_RESUMES_PER_REQUEST`. Prod: streaming to S3, workers with memory limits. |
+| **Memory pressure** | Large batch + buffers in RAM | OOM or slow GC | High `MAX_RESUMES_PER_REQUEST` still loads all files in RAM for one request; parse/score run in bounded pools. Prod: presigned S3 uploads, async jobs, workers with memory limits. |
 | **PDF rasterization failure** | `pdfRasterize` returns null | Low-text PDF falls back to text-only path with explanatory string; score may be low | Install `@napi-rs/canvas` on supported platform; Prod: optional dedicated render service. |
 | **Dedupe false positive** | Same phone/email key for different people | Wrong merge | Tune keys (e.g. require email **and** name match); make dedupe configurable per tenant. |
 | **Dedupe false negative** | Typos / formatting in contacts | Duplicate rows | Fuzzy matching or HR merge UI in product layer. |

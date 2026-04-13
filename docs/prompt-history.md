@@ -3,7 +3,7 @@
 This file records **user prompts** from a Cursor AI working session on this repository, for traceability and onboarding. It is safe to commit; it does not contain secrets.
 
 **Session context:** Talent ATS monorepo — Talent Intelligence & Ranking PoC (Express + Vite/React).  
-**First export:** 2026-04-13. **Last updated:** 2026-04-13 (follow-up prompts appended).
+**First export:** 2026-04-13. **Last updated:** 2026-04-13 (§15–18 appended).
 
 ---
 
@@ -129,6 +129,38 @@ remove mermaid diagram insted create diagrams in text version only
 ### 14 — Backfill prompt history
 
 Update @docs/prompt-history.md file with prompts that are not mentioned
+
+---
+
+### 15 — Back from candidate detail clears results
+
+On back action from details screen scanned resumes are cleared out fix it
+
+*(Implementation note: `HomePage` remounts when returning from `/candidates/:id`; restored last rank payload from `sessionStorage` via `loadLastRankPayload()` on mount so the results table repopulates. Upload `File` objects still reset on remount unless the shell is kept mounted or blobs are persisted separately.)*
+
+---
+
+### 16 — Libraries section in `design.md`
+
+in @design.md also add liberaries used for which purpose
+
+*(Added §1.4 table mapping root/client/server dependencies to roles in the PoC.)*
+
+---
+
+### 17 — 50k résumés, remove 500 cap, batch or queue processing
+
+There can be 50000 resumes in the system. Remove cap of 500 also update UI to remove cap of 500, make queries in batch or queue
+
+*(Raised `MAX_RESUMES_PER_REQUEST` to 50,000 (client + server); replaced unbounded `Promise.all` for parse/score with `mapWithConcurrency` and env-tunable `PARSE_CONCURRENCY` / `SCORE_CONCURRENCY`; exposed `meta.batching` and updated UI copy, table pagination options, and related docs.)*
+
+---
+
+### 18 — Prompt history maintenance
+
+update @docs/prompt-history.md
+
+*(This entry: appended §15–17 and §18; refreshed last-updated line.)*
 
 ---
 

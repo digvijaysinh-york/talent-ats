@@ -80,7 +80,7 @@ export default function HomePage() {
       onChange: ({ fileList }) => {
         if (fileList.length > MAX_RESUMES_PER_REQUEST) {
           message.warning(
-            `You can attach up to ${MAX_RESUMES_PER_REQUEST} resumes per run. Extra files were not added.`
+            `You can attach up to ${MAX_RESUMES_PER_REQUEST.toLocaleString()} resumes per run. Extra files were not added.`
           );
         }
         setResumeList(fileList.slice(0, MAX_RESUMES_PER_REQUEST));
@@ -246,8 +246,12 @@ export default function HomePage() {
             <Paragraph type="secondary" style={{ marginBottom: space[4] }}>
               Add one or many résumés (PDF, DOCX, or JPEG/PNG/WebP screenshots). Scanned PDFs with no
               text are rasterized server-side and scored with vision. One job description (paste below
-              and/or upload a file — not an image). Résumés are scored in parallel; duplicate people
-              (same email or phone) are merged. Up to {MAX_RESUMES_PER_REQUEST} files per request.
+              and/or upload a file — not an image). The server parses and scores in bounded parallel
+              batches (tunable via <Text code>PARSE_CONCURRENCY</Text> /{' '}
+              <Text code>SCORE_CONCURRENCY</Text>) so large sets do not open thousands of simultaneous
+              API calls. Duplicate people (same email or phone) are merged. Up to{' '}
+              {MAX_RESUMES_PER_REQUEST.toLocaleString()} files per request — very large batches need
+              enough RAM for multipart buffers and may take a long time.
             </Paragraph>
             <Row gutter={gridGutter} align="stretch" wrap>
               <Col
@@ -271,7 +275,8 @@ export default function HomePage() {
                   </p>
                   <p className="ant-upload-text">Click or drag files here — add as many as you need</p>
                   <p className="ant-upload-hint">
-                    PDF, DOCX, JPEG, PNG, or WebP · max {MAX_RESUMES_PER_REQUEST} files per run
+                    PDF, DOCX, JPEG, PNG, or WebP · up to{' '}
+                    {MAX_RESUMES_PER_REQUEST.toLocaleString()} files per run
                   </p>
                 </Dragger>
               </Col>
@@ -434,6 +439,12 @@ export default function HomePage() {
                 <Descriptions.Item label="Results limited to experience range">
                   {result.meta?.strictExperienceFilter ? 'Yes' : 'No'}
                 </Descriptions.Item>
+                {result.meta?.batching && (
+                  <Descriptions.Item label="Server batching (parse / score concurrency)">
+                    {result.meta.batching.parseConcurrency} / {result.meta.batching.scoreConcurrency}{' '}
+                    parallel
+                  </Descriptions.Item>
+                )}
                 <Descriptions.Item label="Job description preview" span={{ xs: 1, md: 2 }}>
                   {result.jobDescription?.preview}
                 </Descriptions.Item>
@@ -445,7 +456,7 @@ export default function HomePage() {
                 pagination={{
                   pageSize: 15,
                   showSizeChanger: true,
-                  pageSizeOptions: [10, 15, 25, 50],
+                  pageSizeOptions: [10, 15, 25, 50, 100],
                   showTotal: (total, range) =>
                     `${range[0]}–${range[1]} of ${total} candidates`,
                 }}

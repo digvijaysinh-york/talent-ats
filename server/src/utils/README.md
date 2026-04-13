@@ -4,6 +4,7 @@
 
 | File | Responsibility |
 |------|----------------|
+| `concurrency.js` | `mapWithConcurrency` — ordered async map with a max in-flight limit (parse/score pools) |
 | `mime.js` | Extension + MIME → document kind (`pdf` / `docx` / `txt` / `image`) |
 | `pdfParse.js` | Buffer → PDF text (CommonJS `pdf-parse` via `createRequire`) |
 | `pdfRasterize.js` | Low-text PDF → first page as PNG (`pdfjs-dist` + `@napi-rs/canvas`) for vision scoring |

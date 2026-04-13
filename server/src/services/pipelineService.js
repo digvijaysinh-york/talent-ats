@@ -1,10 +1,15 @@
 /**
  * End-to-end ranking orchestration: validates input, resolves JD text, parses all résumés in
- * parallel, scores with OpenAI in parallel, deduplicates, optionally filters by years of experience,
+ * bounded parallel (parse + score pools), deduplicates, optionally filters by years of experience,
  * sorts and assigns ranks, and returns the public API payload (strips internal `dedupeKey`).
  */
 import { randomUUID } from 'crypto';
-import { MAX_RESUMES_PER_REQUEST } from '../config/limits.js';
+import {
+  MAX_RESUMES_PER_REQUEST,
+  PARSE_CONCURRENCY,
+  SCORE_CONCURRENCY,
+} from '../config/limits.js';
+import { mapWithConcurrency } from '../utils/concurrency.js';
 import { dedupeScoredCandidates } from './dedupeService.js';
 import { normalizeResumeFiles } from './ingestService.js';
 import { parseDocument } from './parseService.js';
@@ -47,7 +52,7 @@ function buildResumeExcerpt(pr) {
 }
 
 /**
- * Full pipeline: ingest → parse (parallel) → score (parallel) → dedupe → rank.
+ * Full pipeline: ingest → parse (bounded concurrency) → score (bounded concurrency) → dedupe → rank.
  * @param {{
  *   resumes: Express.Multer.File[];
  *   jobDescriptionText?: string;
@@ -124,8 +129,10 @@ export async function runRankingPipeline(input) {
 
   const resumeInputs = normalizeResumeFiles(resumes);
 
-  const parsedResumes = await Promise.all(
-    resumeInputs.map(async (file) => {
+  const parsedResumes = await mapWithConcurrency(
+    resumeInputs,
+    PARSE_CONCURRENCY,
+    async (file) => {
       try {
         const parsed = await parseDocument(
           file.buffer,
@@ -148,11 +155,13 @@ export async function runRankingPipeline(input) {
           parseError: e instanceof Error ? e.message : String(e),
         };
       }
-    })
+    }
   );
 
-  const scored = await Promise.all(
-    parsedResumes.map(async (pr) => {
+  const scored = await mapWithConcurrency(
+    parsedResumes,
+    SCORE_CONCURRENCY,
+    async (pr) => {
       const id = randomUUID();
       if (pr.parseError) {
         return {
@@ -211,7 +220,7 @@ export async function runRankingPipeline(input) {
           resumeExcerpt: '',
         };
       }
-    })
+    }
   );
 
   const beforeDedupe = scored.length;
@@ -246,6 +255,10 @@ export async function runRankingPipeline(input) {
       strictExperienceFilter: Boolean(filterOpts),
       scoredCount: beforeDedupe,
       uniqueAfterDedupe: deduped.length,
+      batching: {
+        parseConcurrency: PARSE_CONCURRENCY,
+        scoreConcurrency: SCORE_CONCURRENCY,
+      },
     },
   };
 }
