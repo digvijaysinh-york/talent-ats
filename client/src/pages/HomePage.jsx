@@ -2,7 +2,7 @@
  * Home screen: multipart upload to `/api/v1/rank`, optional HR experience band + strict filter,
  * results table with pagination, navigation to candidate detail. Uses design tokens for layout.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -26,7 +26,7 @@ import { EyeOutlined, InboxOutlined, SendOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { previewScoringTemperature } from '../lib/experienceTemperature.js';
 import { MAX_RESUMES_PER_REQUEST } from '../lib/limits.js';
-import { saveLastRankPayload } from '../lib/rankSnapshot.js';
+import { loadLastRankPayload, saveLastRankPayload } from '../lib/rankSnapshot.js';
 import {
   appContentStyle,
   appHeaderStyle,
@@ -57,6 +57,14 @@ export default function HomePage() {
   const [experienceMin, setExperienceMin] = useState(null);
   const [experienceMax, setExperienceMax] = useState(null);
   const [strictExperienceFilter, setStrictExperienceFilter] = useState(false);
+
+  /** Restore ranked results after visiting candidate detail (Home unmounts; snapshot remains in sessionStorage). */
+  useEffect(() => {
+    const saved = loadLastRankPayload();
+    if (saved && Array.isArray(saved.candidates) && saved.candidates.length > 0) {
+      setResult(saved);
+    }
+  }, []);
 
   const tempPreview = useMemo(
     () => previewScoringTemperature(experienceMin, experienceMax),
