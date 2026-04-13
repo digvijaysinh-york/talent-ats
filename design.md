@@ -22,7 +22,7 @@ For day-to-day module maps, see folder **README.md** files under `server/src` an
 | Deployment | Single Node process + static SPA (or Vite dev proxy) |
 | State | **No database**; uploads held in memory for the request only |
 | Scoring | **OpenAI** chat completions (text or multimodal vision per resume) |
-| Concurrency | **`Promise.all`** over résumés for parse and score phases |
+| Concurrency | **`Promise.all`** over resumes for parse and score phases |
 
 ### 1.2 Component diagram
 
@@ -64,8 +64,8 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
 | **cors** | Server | Allow browser requests from the Vite dev origin (and configured origins). |
 | **dotenv** | Server | Load environment variables (e.g. `OPENAI_API_KEY`, `OPENAI_MODEL`) from `.env`. |
 | **multer** | Server | Parse `multipart/form-data` for resume and JD file uploads (memory storage). |
-| **mammoth** | Server | Extract text from **DOCX** résumés and JD files. |
-| **pdf-parse** | Server | Extract text from **PDF** résumés and JD files (primary text path). |
+| **mammoth** | Server | Extract text from **DOCX** resumes and JD files. |
+| **pdf-parse** | Server | Extract text from **PDF** resumes and JD files (primary text path). |
 | **pdfjs-dist** | Server | PDF page rendering used with canvas to **rasterize** low-text PDFs for vision. |
 | **@napi-rs/canvas** | Server | Draw PDF page to a bitmap / PNG for the vision / multimodal scoring path. |
 | **openai** | Server | Official SDK for **chat completions** (text JSON and image `image_url` messages). |
@@ -147,7 +147,7 @@ Ordered stages (do not reorder without updating `pipelineService.js`):
 - **`POST /api/v1/rank`** — `resumes` (repeatable), optional `jobDescription`, `jobDescriptionText`, `experienceMin`, `experienceMax`, `strictExperienceFilter`.
 - **Résumé types**: PDF, DOCX, TXT, JPEG, PNG, WebP (vision where needed). **JD** must not be image-only (`400` / `JD_IMAGE_NOT_SUPPORTED`).
 - **`GET /health`** — Liveness.
-- **Limits**: `server/src/config/limits.js` (max résumés, Multer file count/size).
+- **Limits**: `server/src/config/limits.js` (max resumes, Multer file count/size).
 
 ---
 
@@ -175,7 +175,7 @@ The PoC is intentionally **synchronous** and **memory-bound**. A production-shap
 ### 7.1 Object storage (e.g. Amazon S3, GCS, MinIO)
 
 - **Upload path**: API returns a **presigned PUT URL** (or short-lived upload token); client sends files **directly to S3**, not through the app server buffer.
-- **Artifacts**: Store raw résumés, optional JD file, and generated intermediates (e.g. rasterized PNG) under a key prefix: `tenants/{tenantId}/jobs/{jobId}/...`.
+- **Artifacts**: Store raw resumes, optional JD file, and generated intermediates (e.g. rasterized PNG) under a key prefix: `tenants/{tenantId}/jobs/{jobId}/...`.
 - **Benefits**: Removes multi‑hundred‑MB payloads from API memory; enables replay and audit; supports virus scanning pipelines.
 
 ### 7.2 Database

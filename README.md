@@ -1,6 +1,6 @@
 # Talent ATS (monorepo)
 
-Local **Talent Intelligence & Ranking** proof of concept: upload many résumés (**PDF, DOCX, JPEG/PNG/WebP**, or scanned PDFs with little extractable text) plus a **text-based job description**, score with OpenAI (text or **vision** where needed), deduplicate by contact fields, and browse ranked results in the browser.
+Local **Talent Intelligence & Ranking** proof of concept: upload many resumes (**PDF, DOCX, JPEG/PNG/WebP**, or scanned PDFs with little extractable text) plus a **text-based job description**, score with OpenAI (text or **vision** where needed), deduplicate by contact fields, and browse ranked results in the browser.
 
 ## Documentation
 
