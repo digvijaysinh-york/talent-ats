@@ -5,6 +5,7 @@ Local **Talent Intelligence & Ranking** proof of concept: upload many résumés 
 ## Documentation
 
 - **[design.md](./design.md)** — Architecture, pipeline, API, client design system, and extension points.
+- **[docs/prompt-history.md](./docs/prompt-history.md)** — Exported user prompt history from AI-assisted development (for traceability).
 - **Package READMEs** — [`server/README.md`](./server/README.md), [`client/README.md`](./client/README.md).
 - **Core logic folders** — Each of `server/src/{config,routes,services,utils}` and `client/src/{pages,theme,lib,styles}` includes a **README.md** with a module map.
 
