@@ -21,7 +21,7 @@ For day-to-day module maps, see folder **README.md** files under `server/src` an
 |--------|------------|
 | Deployment | Single Node process + static SPA (or Vite dev proxy) |
 | State | **No database**; uploads held in memory for the request only |
-| Scoring | **OpenAI** chat completions (text or multimodal vision per résumé) |
+| Scoring | **OpenAI** chat completions (text or multimodal vision per resume) |
 | Concurrency | **`Promise.all`** over résumés for parse and score phases |
 
 ### 1.2 Component diagram
@@ -36,7 +36,7 @@ For day-to-day module maps, see folder **README.md** files under `server/src` an
                                              → dedupe → rank
                                                       │
                                                       ▼
-                                             OpenAI (per résumé)
+                                             OpenAI (per resume)
 ```
 
 ### 1.3 Repository layout
@@ -63,7 +63,7 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
 | **express** | Server | HTTP app, JSON/body handling, route registration (`/api/v1/rank`, `/health`). |
 | **cors** | Server | Allow browser requests from the Vite dev origin (and configured origins). |
 | **dotenv** | Server | Load environment variables (e.g. `OPENAI_API_KEY`, `OPENAI_MODEL`) from `.env`. |
-| **multer** | Server | Parse `multipart/form-data` for résumé and JD file uploads (memory storage). |
+| **multer** | Server | Parse `multipart/form-data` for resume and JD file uploads (memory storage). |
 | **mammoth** | Server | Extract text from **DOCX** résumés and JD files. |
 | **pdf-parse** | Server | Extract text from **PDF** résumés and JD files (primary text path). |
 | **pdfjs-dist** | Server | PDF page rendering used with canvas to **rasterize** low-text PDFs for vision. |
@@ -79,7 +79,7 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
 1. **Client** builds `FormData`: repeatable `resumes`, optional `jobDescription` file, optional `jobDescriptionText`, optional HR experience fields.
 2. **HTTP** `POST /api/v1/rank` hits Express; **Multer** parses multipart fields into memory buffers (`rankRoutes.js`).
 3. **Job description** is resolved to plain text (parse PDF/DOCX/TXT; **reject** image-only JD with `400` / `JD_IMAGE_NOT_SUPPORTED`).
-4. For each résumé, **parse** runs in parallel (`parseService.js`):
+4. For each resume, **parse** runs in parallel (`parseService.js`):
    - PDF → text via `pdf-parse`; if text is very short, **rasterize page 1** to PNG for vision.
    - DOCX → `mammoth`; TXT → UTF-8.
    - JPEG/PNG/WebP → no text extraction; mark for **vision** scoring.
@@ -122,7 +122,7 @@ Dependencies are declared in root **`package.json`** (workspaces) and in **`clie
       |                        |                          |                |                  |
 
 Notes:
-- Rows marked "(x N)" run in parallel for each résumé (Promise.all), not strictly one-after-another.
+- Rows marked "(x N)" run in parallel for each resume (Promise.all), not strictly one-after-another.
 - Dedupe + Rank run once after all scores return.
 ```
 
@@ -134,7 +134,7 @@ Ordered stages (do not reorder without updating `pipelineService.js`):
 
 1. **Ingest** — Multer stores uploads in memory; files normalized via `ingestService`.
 2. **Parse** — PDF (`pdf-parse`), DOCX (`mammoth`), TXT; JPEG/PNG/WebP as vision inputs; MIME from `utils/mime.js`. Low-text PDFs → first-page PNG (`utils/pdfRasterize.js`).
-3. **Score** — One OpenAI completion per résumé: text-only or multimodal; temperature from HR band (`utils/temperatureMap.js`).
+3. **Score** — One OpenAI completion per resume: text-only or multimodal; temperature from HR band (`utils/temperatureMap.js`).
 4. **Dedupe** — Same normalized email or phone (`dedupeService` + `utils/contactNormalize.js`).
 5. **Rank** — Sort, optional YoE filter, assign `rank` (`rankService.js`).
 
@@ -190,7 +190,7 @@ The PoC is intentionally **synchronous** and **memory-bound**. A production-shap
   1. Load files from S3.
   2. Run parse → score (with **bounded concurrency** per worker, e.g. p-limit 5).
   3. Write scores to DB and update job status.
-- **Fan-out**: One message per résumé vs one message per job — trade-off between queue overhead and partial progress. Per-job messages simplify dedupe/ranking in one place; per-file messages improve **partial retries** after OpenAI failures.
+- **Fan-out**: One message per resume vs one message per job — trade-off between queue overhead and partial progress. Per-job messages simplify dedupe/ranking in one place; per-file messages improve **partial retries** after OpenAI failures.
 - **Rate limits**: Centralize OpenAI **RPM/TPM** handling with token bucket or provider-specific backoff; **never** unbounded `Promise.all` across hundreds of files in one process.
 
 ### 7.4 API and client
@@ -267,7 +267,7 @@ Flow summary:
 | **Dedupe false positive** | Same phone/email key for different people | Wrong merge | Tune keys (e.g. require email **and** name match); make dedupe configurable per tenant. |
 | **Dedupe false negative** | Typos / formatting in contacts | Duplicate rows | Fuzzy matching or HR merge UI in product layer. |
 | **Client `sessionStorage` cleared** | Detail page empty | No server-side loss | Prod: persist ranked results in DB; link shares `job_id`. |
-| **Prompt injection** | JD or résumé contains instructions | Skewed scores | Frame content as data; system prompt hardening; optional moderation API. |
+| **Prompt injection** | JD or resume contains instructions | Skewed scores | Frame content as data; system prompt hardening; optional moderation API. |
 | **PII in logs** | `console.error` / access logs | Compliance risk | Redact filenames/content in production logging. |
 
 ---
