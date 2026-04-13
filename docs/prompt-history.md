@@ -3,7 +3,7 @@
 This file records **user prompts** from a Cursor AI working session on this repository, for traceability and onboarding. It is safe to commit; it does not contain secrets.
 
 **Session context:** Talent ATS monorepo — Talent Intelligence & Ranking PoC (Express + Vite/React).  
-**Export date:** 2026-04-13 (aligned with session date).
+**First export:** 2026-04-13. **Last updated:** 2026-04-13 (follow-up prompts appended).
 
 ---
 
@@ -96,9 +96,39 @@ Create a github friendly commit message and descriptions for uncommit files.
 
 ---
 
-### 9 — This export
+### 9 — Prompt history file (first export)
 
 Create a prompt history file for AI chat / prompt history export committed to the repository from initial of this thread
+
+---
+
+### 10 — Vision / images for unscannable PDFs and JPEG résumés
+
+support even if pdf is not available for evaluation as it appears to be a screenshot file without readable content. Enable jpeg parse too.
+
+---
+
+### 11 — READMEs and commit text (post–vision changes)
+
+Update readmes and give commit message and description
+
+---
+
+### 12 — Architecture document scope (`design.md`)
+
+Update @design.md with purpose of an Architecture document covering: system design, data flow, how you would scale to production (e.g. S3, queuing, distributed workers), and known failure modes.
+
+---
+
+### 13 — Diagrams without Mermaid
+
+remove mermaid diagram insted create diagrams in text version only
+
+---
+
+### 14 — Backfill prompt history
+
+Update @docs/prompt-history.md file with prompts that are not mentioned
 
 ---
 
