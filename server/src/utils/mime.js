@@ -1,3 +1,5 @@
+import { resolveVisionImageMime } from './visionMime.js';
+
 /**
  * Lowercase file extension without the dot, or empty string if none.
  * @param {string} name
@@ -8,14 +10,15 @@ export function extFromName(name) {
 }
 
 /**
- * Resolves upload to a parser branch: `pdf`, `docx`, `txt`, or `null` if unsupported.
+ * Resolves upload to a parser branch: `pdf`, `docx`, `txt`, `image`, or `null` if unsupported.
  * Uses MIME when reliable, otherwise falls back to file extension.
  * @param {string} mimetype
  * @param {string} originalname
- * @returns {'pdf' | 'docx' | 'txt' | null}
+ * @returns {'pdf' | 'docx' | 'txt' | 'image' | null}
  */
 export function resolveKind(mimetype, originalname) {
   const ext = extFromName(originalname);
+  if (resolveVisionImageMime(mimetype, originalname)) return 'image';
   if (mimetype === 'application/pdf' || ext === 'pdf') return 'pdf';
   if (
     mimetype ===

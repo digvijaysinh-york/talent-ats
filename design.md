@@ -36,8 +36,8 @@ See **folder-level `README.md`** under `server/src/*` and `client/src/*` for mod
 Ordered stages (do not reorder without updating `pipelineService.js`):
 
 1. **Ingest** — Multer stores uploads in memory; files normalized via `ingestService`.
-2. **Parse** — PDF (`pdf-parse`), DOCX (`mammoth`), TXT; MIME/extension from `utils/mime.js`.
-3. **Score** — One OpenAI chat completion per successfully parsed resume (`scoreService`); temperature derived from HR experience band (`utils/temperatureMap.js`).
+2. **Parse** — PDF (`pdf-parse`), DOCX (`mammoth`), TXT; JPEG/PNG/WebP as vision inputs; MIME from `utils/mime.js`. PDFs with very little extracted text are rasterized to a first-page PNG (`utils/pdfRasterize.js`) so scanned/screenshot PDFs can still be scored with vision.
+3. **Score** — One OpenAI chat completion per résumé (`scoreService`): text-only or multimodal (image) when needed; temperature from HR experience band (`utils/temperatureMap.js`).
 4. **Dedupe** — Collapse rows sharing the same normalized email or phone (`dedupeService` + `utils/contactNormalize.js`).
 5. **Rank** — Sort by `matchScore` descending; optional strict years-of-experience filter; assign `rank` (`rankService`).
 
@@ -46,6 +46,7 @@ Ordered stages (do not reorder without updating `pipelineService.js`):
 ## 4. API
 
 - **`POST /api/v1/rank`** — Fields: `resumes` (repeatable), optional `jobDescription`, `jobDescriptionText`, `experienceMin`, `experienceMax`, `strictExperienceFilter`.
+- **Résumé files**: PDF, DOCX, TXT (as applicable), JPEG, PNG, WebP. Image uploads are scored via **vision**. **Job description** uploads must not be image-only (API returns `400` / `JD_IMAGE_NOT_SUPPORTED`); use text, PDF, DOCX, or TXT for the JD.
 - **`GET /health`** — Liveness JSON.
 
 Limits: `server/src/config/limits.js` (`MAX_RESUMES_PER_REQUEST`, total file cap for Multer).
@@ -53,6 +54,7 @@ Limits: `server/src/config/limits.js` (`MAX_RESUMES_PER_REQUEST`, total file cap
 ## 5. OpenAI integration
 
 - **Env**: `OPENAI_API_KEY`, optional `OPENAI_MODEL` (default `gpt-4o-mini`).
+- **Modalities**: Plain-text JSON user messages when the résumé has sufficient extracted text; **multimodal** (`text` + `image_url` data URL) for image résumés and for PDFs rasterized to a first-page PNG when text extraction is too short.
 - **Output**: JSON object with contact fields, `yearsOfExperience`, `matchScore`, narrative fields; validated/clamped in code.
 - **Temperature**: Narrow HR experience bands → lower temperature; wider bands → higher (see `temperatureMap.js`).
 

@@ -1,7 +1,8 @@
 /**
  * OpenAI-based fit scoring: one chat completion per résumé, JSON response with contact fields,
- * years of experience, match score, and narrative strengths/gaps. Temperature can be tuned from HR
- * experience band metadata passed from the pipeline.
+ * years of experience, match score, and narrative strengths/gaps. Supports multimodal input when
+ * the résumé is an image (JPEG/PNG/WebP) or a rasterized PDF page. Temperature can be tuned from
+ * HR experience band metadata passed from the pipeline.
  */
 import OpenAI from 'openai';
 
@@ -19,9 +20,9 @@ function getClient() {
 }
 
 /**
- * Optimized prompt: extract structured facts first, then score against JD with explicit criteria.
+ * Text-only path: résumé content is plain text in the JSON envelope.
  */
-const SYSTEM_PROMPT = `You are a recruiting analyst. You receive one job description and one resume as plain text inside a JSON envelope.
+const SYSTEM_PROMPT_TEXT = `You are a recruiting analyst. You receive one job description and one resume as plain text inside a JSON envelope.
 
 Do this in order (internally — do not narrate steps):
 1) Extract from the RESUME only: full name, email, phone, current/most recent job title, and total years of professional experience (integer). If a field is missing or ambiguous, use "" for strings or 0 for years and do not invent contact details.
@@ -39,6 +40,29 @@ Respond with one JSON object only, no markdown, keys:
 - gaps: array of 0–4 short strings (missing skills, seniority, or domain vs JD)
 
 Rules: No hallucinated contact info. If resume text is empty or unusable, set matchScore 0, explain in summary, and leave contact fields empty.`;
+
+/**
+ * Vision path: same JSON contract; résumé is provided as an image plus optional hint text in JSON.
+ */
+const SYSTEM_PROMPT_VISION = `You are a recruiting analyst. You receive the job description and optional partial resume text as JSON, and a separate IMAGE that is the résumé (photo, screenshot, scan, or rasterized PDF page).
+
+Do this in order (internally — do not narrate steps):
+1) Read all legible text from the IMAGE for the résumé. Use optional resumePlainText in JSON only as a supplement when it adds real content.
+2) Extract from the résumé (image + text): full name, email, phone, current/most recent job title, years of professional experience (integer). If illegible or missing, use "" or 0 — never invent contact details.
+3) Evaluate fit to the JOB DESCRIPTION using skills overlap, seniority, domain, and recency.
+
+Respond with one JSON object only, no markdown, keys:
+- fullName: string
+- email: string (empty if not found)
+- phone: string (empty if not found)
+- currentTitle: string (empty if not found)
+- yearsOfExperience: integer 0–50 (0 if unknown)
+- matchScore: integer 0–100
+- summary: one paragraph, max 100 words, evidence-based
+- strengths: array of 2–5 short strings tied to JD requirements
+- gaps: array of 0–4 short strings
+
+Rules: If the image is blank or unreadable, set matchScore 0 and explain in summary.`;
 
 /**
  * @typedef {{
@@ -61,14 +85,18 @@ Rules: No hallucinated contact info. If resume text is empty or unusable, set ma
  */
 
 /**
+ * @typedef {{ text: string; vision?: { buffer: Buffer; mime: string } }} ResumeScoreInput
+ */
+
+/**
  * Calls the chat completions API with structured JSON output and clamps numeric fields.
- * @param {string} resumeText — normalized plain text from parsing
+ * @param {ResumeScoreInput | string} resumeInput — object with optional `vision`, or legacy plain string
  * @param {string} jobDescriptionText — full JD text
  * @param {{ fileName: string; id: string }} meta — stable `id` from pipeline for response correlation
  * @param {{ temperature?: number; experienceBand?: { min: number | null; max: number | null } }} [options]
  * @returns {Promise<Omit<ScoredCandidateRow, 'parseError' | 'resumeExcerpt' | 'sourceFiles' | 'dedupeKey'>>}
  */
-export async function scoreCandidate(resumeText, jobDescriptionText, meta, options = {}) {
+export async function scoreCandidate(resumeInput, jobDescriptionText, meta, options = {}) {
   const client = getClient();
   if (!client) {
     throw Object.assign(new Error('OPENAI_API_KEY is not set'), {
@@ -76,6 +104,11 @@ export async function scoreCandidate(resumeText, jobDescriptionText, meta, optio
       code: 'MISSING_OPENAI_KEY',
     });
   }
+
+  const input =
+    typeof resumeInput === 'string'
+      ? { text: resumeInput, vision: undefined }
+      : resumeInput;
 
   const temperature =
     typeof options.temperature === 'number' && Number.isFinite(options.temperature)
@@ -88,21 +121,50 @@ export async function scoreCandidate(resumeText, jobDescriptionText, meta, optio
       ? `HR target experience band (years, inclusive; soft guidance for scoring emphasis, not a hard rule): min=${band.min ?? 'none'}, max=${band.max ?? 'none'}.`
       : 'No specific experience band from HR; score against the JD as written.';
 
-  const userContent = JSON.stringify({
+  const textPayload = {
     instruction: bandHint,
     fileName: meta.fileName,
     jobDescription: truncate(jobDescriptionText, 12000),
-    resume: truncate(resumeText, 12000),
-  });
+    resumePlainText: truncate(input.text || '', 12000) || '(none)',
+    note: input.vision
+      ? 'Primary résumé content is in the attached image (and optional resumePlainText above).'
+      : undefined,
+  };
+
+  const messages = input.vision
+    ? [
+        { role: 'system', content: SYSTEM_PROMPT_VISION },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: JSON.stringify(textPayload) },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${input.vision.mime};base64,${input.vision.buffer.toString('base64')}`,
+              },
+            },
+          ],
+        },
+      ]
+    : [
+        { role: 'system', content: SYSTEM_PROMPT_TEXT },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            instruction: bandHint,
+            fileName: meta.fileName,
+            jobDescription: truncate(jobDescriptionText, 12000),
+            resume: truncate(input.text || '', 12000),
+          }),
+        },
+      ];
 
   const completion = await client.chat.completions.create({
     model,
     temperature,
     response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userContent },
-    ],
+    messages,
   });
 
   const raw = completion.choices[0]?.message?.content;

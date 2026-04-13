@@ -66,7 +66,7 @@ export default function HomePage() {
   const resumeProps = useMemo(
     () => ({
       multiple: true,
-      accept: '.pdf,.docx',
+      accept: '.pdf,.docx,.jpg,.jpeg,.png,.webp',
       fileList: resumeList,
       beforeUpload: () => false,
       onChange: ({ fileList }) => {
@@ -96,7 +96,7 @@ export default function HomePage() {
   const submit = async () => {
     const files = resumeList.map((f) => f.originFileObj).filter(Boolean);
     if (!files.length) {
-      message.warning('Add at least one resume (PDF or DOCX).');
+      message.warning('Add at least one resume (PDF, DOCX, or image: JPEG/PNG/WebP).');
       return;
     }
     const jdFromFile = jdFile?.originFileObj;
@@ -236,11 +236,10 @@ export default function HomePage() {
         <Space direction="vertical" size={space[6]} style={{ width: '100%' }}>
           <Card title="Upload resumes & job description">
             <Paragraph type="secondary" style={{ marginBottom: space[4] }}>
-              Add one or many resumes (PDF or DOCX) plus a single job description (paste below and/or
-              upload a file). Each resume is parsed and scored in parallel; duplicate people (same email
-              or phone) are merged. You get a ranked list of every unique candidate (large batches may
-              take longer and depend on API limits). Up to {MAX_RESUMES_PER_REQUEST} resumes per
-              request.
+              Add one or many résumés (PDF, DOCX, or JPEG/PNG/WebP screenshots). Scanned PDFs with no
+              text are rasterized server-side and scored with vision. One job description (paste below
+              and/or upload a file — not an image). Résumés are scored in parallel; duplicate people
+              (same email or phone) are merged. Up to {MAX_RESUMES_PER_REQUEST} files per request.
             </Paragraph>
             <Row gutter={gridGutter} align="stretch" wrap>
               <Col
@@ -264,7 +263,7 @@ export default function HomePage() {
                   </p>
                   <p className="ant-upload-text">Click or drag files here — add as many as you need</p>
                   <p className="ant-upload-hint">
-                    PDF or DOCX · max {MAX_RESUMES_PER_REQUEST} files per run
+                    PDF, DOCX, JPEG, PNG, or WebP · max {MAX_RESUMES_PER_REQUEST} files per run
                   </p>
                 </Dragger>
               </Col>

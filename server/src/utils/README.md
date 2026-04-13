@@ -4,8 +4,10 @@
 
 | File | Responsibility |
 |------|----------------|
-| `mime.js` | Extension + MIME → document kind (`pdf` / `docx` / `txt`) |
+| `mime.js` | Extension + MIME → document kind (`pdf` / `docx` / `txt` / `image`) |
 | `pdfParse.js` | Buffer → PDF text (CommonJS `pdf-parse` via `createRequire`) |
+| `pdfRasterize.js` | Low-text PDF → first page as PNG (`pdfjs-dist` + `@napi-rs/canvas`) for vision scoring |
+| `visionMime.js` | JPEG/PNG/WebP MIME normalization for OpenAI `image_url` |
 | `contactNormalize.js` | Email/phone normalization + stable dedupe key |
 | `temperatureMap.js` | HR experience band width → OpenAI `temperature` metadata |
 

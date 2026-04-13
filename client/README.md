@@ -1,6 +1,6 @@
 # Client (`@talent-ats/client`)
 
-Vite + React 18 + Ant Design 5 SPA for uploading résumés, setting optional HR experience filters, and viewing ranked results and candidate detail pages.
+Vite + React 18 + Ant Design 5 SPA for uploading résumés (**PDF, DOCX, JPEG, PNG, WebP**), optional HR experience filters, ranked results (paginated), and candidate detail pages. Job descriptions must be pasted text or a text-based file (not an image-only JD).
 
 ## Scripts
 

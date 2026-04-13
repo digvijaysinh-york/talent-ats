@@ -28,6 +28,25 @@ function parseOptionalNumber(v) {
 }
 
 /**
+ * Human-readable snippet for API/ UI: text slice and/or note when scoring used vision.
+ * @param {{ text: string; kind: string; vision?: { buffer: Buffer; mime: string } }} pr
+ */
+function buildResumeExcerpt(pr) {
+  if (pr.vision) {
+    const tag =
+      pr.kind === 'pdf'
+        ? 'Scored using vision on rasterized PDF page 1 (little or no extractable text).'
+        : 'Scored using vision on uploaded image.';
+    const t = (pr.text || '').trim();
+    if (!t) return tag;
+    const head = t.length > 800 ? `${t.slice(0, 800)}…` : t;
+    return `${head}\n\n[${tag}]`;
+  }
+  if (pr.text.length > 1500) return `${pr.text.slice(0, 1500)}…`;
+  return pr.text;
+}
+
+/**
  * Full pipeline: ingest → parse (parallel) → score (parallel) → dedupe → rank.
  * @param {{
  *   resumes: Express.Multer.File[];
@@ -73,6 +92,14 @@ export async function runRankingPipeline(input) {
       jobDescriptionFile.mimetype,
       jobDescriptionFile.originalname
     );
+    if (parsed.kind === 'image') {
+      throw Object.assign(
+        new Error(
+          'Job description cannot be a JPEG/PNG/WebP image. Paste the JD as text or upload PDF, DOCX, or TXT.'
+        ),
+        { status: 400, code: 'JD_IMAGE_NOT_SUPPORTED' }
+      );
+    }
     jdText = parsed.text;
     jdSource = 'file';
   }
@@ -100,15 +127,16 @@ export async function runRankingPipeline(input) {
   const parsedResumes = await Promise.all(
     resumeInputs.map(async (file) => {
       try {
-        const { text, kind } = await parseDocument(
+        const parsed = await parseDocument(
           file.buffer,
           file.mimetype,
           file.originalname
         );
         return {
           fileName: file.originalname,
-          text,
-          kind,
+          text: parsed.text,
+          kind: parsed.kind,
+          vision: parsed.vision,
           parseError: undefined,
         };
       } catch (e) {
@@ -116,6 +144,7 @@ export async function runRankingPipeline(input) {
           fileName: file.originalname,
           text: '',
           kind: 'error',
+          vision: undefined,
           parseError: e instanceof Error ? e.message : String(e),
         };
       }
@@ -143,18 +172,22 @@ export async function runRankingPipeline(input) {
         };
       }
       try {
-        const score = await scoreCandidate(pr.text, jdText, {
-          fileName: pr.fileName,
-          id,
-        }, {
-          temperature: tempMeta.temperature,
-          experienceBand: {
-            min: tempMeta.bandMin,
-            max: tempMeta.bandMax,
+        const score = await scoreCandidate(
+          { text: pr.text, vision: pr.vision },
+          jdText,
+          {
+            fileName: pr.fileName,
+            id,
           },
-        });
-        const excerpt =
-          pr.text.length > 1500 ? `${pr.text.slice(0, 1500)}…` : pr.text;
+          {
+            temperature: tempMeta.temperature,
+            experienceBand: {
+              min: tempMeta.bandMin,
+              max: tempMeta.bandMax,
+            },
+          }
+        );
+        const excerpt = buildResumeExcerpt(pr);
         return {
           ...score,
           parseError: undefined,

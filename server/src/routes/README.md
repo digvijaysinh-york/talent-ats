@@ -4,6 +4,6 @@ Express routers. **Keep handlers thin**: parse `req`/`res`, call services, forwa
 
 | File | Endpoints |
 |------|-----------|
-| `rankRoutes.js` | `POST /rank` — multipart `resumes`, optional `jobDescription`, body fields for JD text and HR experience filters |
+| `rankRoutes.js` | `POST /rank` — multipart `resumes` (PDF/DOCX/TXT/images), optional `jobDescription` (not image-only), body fields for JD text and HR experience filters |
 
 Multer configuration (memory storage, file size, field `maxCount`) lives in this module and imports limits from `config/limits.js`.
