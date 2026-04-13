@@ -48,6 +48,28 @@ For day-to-day module maps, see folder **README.md** files under `server/src` an
 | `package.json` (root) | npm workspaces: `client`, `server` |
 | `design.md` (this file) | Architecture and system design |
 
+### 1.4 Libraries and tooling (by purpose)
+
+Dependencies are declared in root **`package.json`** (workspaces) and in **`client/package.json`** / **`server/package.json`**. Purposes below map each major library to how this repo uses it.
+
+| Package | Where | Purpose in Talent ATS |
+|---------|--------|------------------------|
+| **concurrently** | Root (dev) | Runs `server` and `client` dev scripts in parallel (`npm run dev`). |
+| **vite** | Client (dev/build) | Dev server with HMR, production bundling for the SPA. |
+| **@vitejs/plugin-react** | Client (dev) | React + JSX compilation and Fast Refresh for Vite. |
+| **react** / **react-dom** | Client | UI runtime: pages, state, and rendering. |
+| **react-router-dom** | Client | Client-side routing (`/`, `/candidates/:id`). |
+| **antd** | Client | Component library (layout, forms, upload, table, feedback). |
+| **express** | Server | HTTP app, JSON/body handling, route registration (`/api/v1/rank`, `/health`). |
+| **cors** | Server | Allow browser requests from the Vite dev origin (and configured origins). |
+| **dotenv** | Server | Load environment variables (e.g. `OPENAI_API_KEY`, `OPENAI_MODEL`) from `.env`. |
+| **multer** | Server | Parse `multipart/form-data` for résumé and JD file uploads (memory storage). |
+| **mammoth** | Server | Extract text from **DOCX** résumés and JD files. |
+| **pdf-parse** | Server | Extract text from **PDF** résumés and JD files (primary text path). |
+| **pdfjs-dist** | Server | PDF page rendering used with canvas to **rasterize** low-text PDFs for vision. |
+| **@napi-rs/canvas** | Server | Draw PDF page to a bitmap / PNG for the vision / multimodal scoring path. |
+| **openai** | Server | Official SDK for **chat completions** (text JSON and image `image_url` messages). |
+
 ---
 
 ## 2. Data flow
