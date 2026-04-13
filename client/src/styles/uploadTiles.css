@@ -1,0 +1,30 @@
+/**
+ * Equal-height resume / JD upload dropzones when shown side-by-side.
+ * Ant Design drag markup: span.ant-upload-wrapper > div.ant-upload.ant-upload-drag > … > .ant-upload-drag-container
+ */
+
+.talent-upload-tile.ant-upload-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.talent-upload-tile.ant-upload-wrapper > .ant-upload-drag {
+  flex: 1 1 auto;
+  display: flex !important;
+  flex-direction: column;
+  min-height: 200px;
+  margin: 0 !important;
+}
+
+.talent-upload-tile .ant-upload-drag-container {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 0;
+}

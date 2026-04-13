@@ -1,12 +1,16 @@
+/**
+ * Document parsing: chooses parser from MIME/extension, returns normalized plain text for scoring.
+ */
 import mammoth from 'mammoth';
 import { resolveKind } from '../utils/mime.js';
 import { extractPdfText } from '../utils/pdfParse.js';
 
 /**
- * @param {Buffer} buffer
- * @param {string} mimetype
- * @param {string} originalname
+ * @param {Buffer} buffer — raw file bytes
+ * @param {string} mimetype — client-reported MIME
+ * @param {string} originalname — original filename (extension fallback)
  * @returns {Promise<{ text: string; kind: string }>}
+ * @throws {Error & { status?: number; code?: string }} on unsupported type
  */
 export async function parseDocument(buffer, mimetype, originalname) {
   const kind = resolveKind(mimetype, originalname);
@@ -32,7 +36,10 @@ export async function parseDocument(buffer, mimetype, originalname) {
   return { text: normalizeText(text), kind };
 }
 
-/** @param {string} s */
+/**
+ * Collapses whitespace and strips null bytes for safer downstream JSON / model input.
+ * @param {string} s
+ */
 function normalizeText(s) {
   return s.replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
 }

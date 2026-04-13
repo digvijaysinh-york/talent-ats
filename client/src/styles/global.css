@@ -1,0 +1,12 @@
+/**
+ * Global baseline — spacing/type are driven by JS tokens + Ant Design theme.
+ * Keep this file minimal; prefer theme/designTokens.js for new values.
+ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+}

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Talent ATS — core context
 
-This monorepo is a **local Proof of Concept**: rank **up to 10** resumes (PDF/DOCX/TXT) against **one job description** (text or file) and return **top 10** candidates as structured JSON.
+This monorepo is a **local Proof of Concept**: rank **many résumés** (PDF/DOCX; cap per request in `server/src/config/limits.js`) against **one job description** (text or file) and return **all unique candidates ranked** (deduped by email/phone) as structured JSON.
 
 ## Product constraints
 
@@ -18,7 +18,7 @@ This monorepo is a **local Proof of Concept**: rank **up to 10** resumes (PDF/DO
 1. **Ingest** — normalize uploads (multer memory storage).
 2. **Parse** — `pdf-parse` (via utils), `mammoth` for DOCX; parallelize with `Promise.all`.
 3. **Score** — one model call per successfully parsed resume; parallelize with `Promise.all`.
-4. **Rank** — deterministic sort / top-N in a small pure function.
+4. **Rank** — deterministic sort; return full ranked list (or slice via `rankTop` `topN` when needed).
 
 ## Monorepo
 

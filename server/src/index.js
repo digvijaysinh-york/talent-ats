@@ -1,3 +1,7 @@
+/**
+ * Express application entry: CORS for the Vite dev origin, JSON body limit, health check,
+ * ranking API under `/api/v1`, and a JSON error handler (uses `err.status` / `err.code` when set).
+ */
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
@@ -20,6 +24,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/v1', rankRouter);
 
+/** Central error handler — avoids leaking stack traces in JSON responses. */
 app.use((err, _req, res, _next) => {
   console.error(err);
   const status = err.status || 500;
