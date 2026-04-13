@@ -1,0 +1,18 @@
+---
+description: Vite + React client — API integration and UX for upload/rank flow
+globs: client/**/*.{js,jsx,html}
+alwaysApply: false
+---
+
+# Client (`client/`)
+
+## Role
+
+Minimal UI to exercise the ranking API: upload resumes + job description, display structured JSON or a simple ranked list.
+
+## Conventions
+
+- **Vite** dev server (default port **5173**); API expects CORS from that origin.
+- Call the backend with the same field names the server expects (e.g. `resumes`, `jobDescription`, `jobDescriptionText`).
+- Keep components small; prefer fetching logic in one place or a thin hook if it grows.
+- Do not embed API keys in the client; all OpenAI usage stays server-side.

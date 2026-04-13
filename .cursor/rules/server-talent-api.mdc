@@ -1,0 +1,24 @@
+---
+description: Express server conventions — routes, services, utils, errors, multer
+globs: server/**/*.js
+alwaysApply: false
+---
+
+# Server (`server/`)
+
+## Layout
+
+- **`src/routes/`** — thin HTTP: multer config, map `req` → service calls, `res.json` / `next(err)`.
+- **`src/services/`** — business logic: `pipelineService`, `ingestService`, `parseService`, `scoreService`, `rankService`.
+- **`src/utils/`** — shared helpers (e.g. MIME, PDF extraction). No OpenAI or Express-specific wiring here unless unavoidable.
+
+## Patterns
+
+- **ESM**: use `.js` imports with explicit extensions.
+- **Concurrency**: use `Promise.all` for independent parse/score work; catch per-item failures so one bad file does not abort the batch (match existing `pipelineService` behavior).
+- **Errors**: attach `status` and `code` on `Error` objects for the global error handler; avoid leaking stack traces in JSON responses.
+- **Secrets**: only `process.env` (e.g. `OPENAI_API_KEY`); never commit keys; document vars in `server/.env.example`.
+
+## File uploads
+
+- Multer **memory** storage; enforce sensible `limits` (file size, max count) in the route layer.

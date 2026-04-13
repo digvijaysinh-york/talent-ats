@@ -1,0 +1,30 @@
+---
+description: Talent Intelligence POC scope, pipeline, and stack — applies to all work in this repo
+alwaysApply: true
+---
+
+# Talent ATS — core context
+
+This monorepo is a **local Proof of Concept**: rank **up to 10** resumes (PDF/DOCX/TXT) against **one job description** (text or file) and return **top 10** candidates as structured JSON.
+
+## Product constraints
+
+- **No database**: in-memory only; state does not persist across restarts.
+- **OpenAI**: scoring via API (`OPENAI_API_KEY`); keep prompts and response parsing in `scoreService.js`-style modules.
+- **Extensible, not production infra**: clear seams (ingest → parse → score → rank) so a future DB/queue can slot in without rewriting everything.
+
+## Pipeline (do not break this order)
+
+1. **Ingest** — normalize uploads (multer memory storage).
+2. **Parse** — `pdf-parse` (via utils), `mammoth` for DOCX; parallelize with `Promise.all`.
+3. **Score** — one model call per successfully parsed resume; parallelize with `Promise.all`.
+4. **Rank** — deterministic sort / top-N in a small pure function.
+
+## Monorepo
+
+- Root: npm workspaces `client` (Vite + React), `server` (Express, ESM).
+- Dev: `npm run dev` runs both; API under `/api/v1`, CORS for Vite dev origin.
+
+## API shape
+
+Responses should stay **structured JSON** (version, job description meta, `candidates`, `meta`). Preserve backward compatibility when changing fields unless explicitly migrating.
